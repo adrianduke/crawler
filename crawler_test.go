@@ -25,7 +25,9 @@ func Test_ItPrintsForwardSlashForURLsWithNoPath(t *testing.T) {
 
 	mockFetcher.On("Fetch", url.String()).Return(&PageResults{}, nil)
 
-	app.Run(url, 2)
+	app.waitGroup.Add(1)
+	app.Crawl(url, 2)
+	app.waitGroup.Wait()
 
 	assert.Equal(t, output.String(), expectedOutput)
 }
@@ -42,9 +44,10 @@ func Test_ItReturnsAnErrorOnceMaxDepthIsReached(t *testing.T) {
 		internalURLs: map[string]bool{"http://www.google.com/1": true},
 	}, nil)
 
-	err = app.Run(url, 1)
+	app.waitGroup.Add(1)
+	app.Crawl(url, 1)
 
-	assert.EqualError(t, err, "Reached max depth")
+	assert.EqualError(t, <-app.Errors, "Reached max depth")
 }
 
 type MockFetcher struct {

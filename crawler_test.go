@@ -50,6 +50,50 @@ func Test_ItReturnsAnErrorOnceMaxDepthIsReached(t *testing.T) {
 	assert.EqualError(t, <-app.Errors, "Reached max depth")
 }
 
+func Test_ItTracksURLsItHasVisited(t *testing.T) {
+	output := new(bytes.Buffer)
+	mockFetcher := &MockFetcher{}
+	app := NewCrawlerApp(output, mockFetcher)
+	urlString := "http://www.google.com"
+	expectedVisitedMap := map[string]bool{
+		urlString:                 true,
+		"http://www.google.com/1": true,
+	}
+
+	url, err := url.Parse(urlString)
+	assert.Nil(t, err)
+
+	mockFetcher.On("Fetch", url.String()).Return(&PageResults{
+		internalURLs: map[string]bool{
+			"http://www.google.com/1": true,
+		},
+	}, nil)
+	mockFetcher.On("Fetch", url.String()+"/1").Return(&PageResults{}, nil)
+
+	app.waitGroup.Add(1)
+	app.Crawl(url, 2)
+	app.waitGroup.Wait()
+
+	assert.Equal(t, expectedVisitedMap, app.Visited)
+}
+
+func Test_ItDoesntRevistVisitedURLS(t *testing.T) {
+	output := new(bytes.Buffer)
+	mockFetcher := &MockFetcher{}
+	app := NewCrawlerApp(output, mockFetcher)
+	urlString := "http://www.google.com"
+	app.Visited[urlString] = true
+
+	url, err := url.Parse(urlString)
+	assert.Nil(t, err)
+
+	app.waitGroup.Add(1)
+	app.Crawl(url, 2)
+	app.waitGroup.Wait()
+
+	mockFetcher.AssertNotCalled(t, "Fetch", urlString)
+}
+
 type MockFetcher struct {
 	mock.Mock
 }

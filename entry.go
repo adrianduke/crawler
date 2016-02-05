@@ -3,7 +3,6 @@ package crawler
 import (
 	"fmt"
 	"io"
-	"net/url"
 )
 
 func EntryPoint(cliArgs []string, stdout, stderr io.Writer) int {
@@ -12,19 +11,9 @@ func EntryPoint(cliArgs []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	targetURLString := cliArgs[0]
-
-	targetURL, err := url.Parse(targetURLString)
-	if err != nil {
-		fmt.Fprintf(stderr, "Error: unable to parse url: %s\n", err)
-		return 1
-	}
-
 	crawler := NewCrawlerApp(stdout, &HTTPFetcher{})
-
-	err = crawler.Run(targetURL, 10)
-	if err != nil {
-		fmt.Fprintf(stderr, "Error: %s\n", err)
+	if err := crawler.Run(cliArgs[0], stderr); err != nil {
+		fmt.Fprintln(stderr, err.Error())
 		return 1
 	}
 
